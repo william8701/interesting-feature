@@ -3,7 +3,5 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 
-GET     /v1/feature                    v1.feature.FeatureController.index(email, featureName)
-POST    /v1/feature                    v1.feature.FeatureController.update()
-
-
+GET         /v1/feature            v1.feature.FeatureController.index(email, featureName)
+POST        /v1/feature            v1.feature.FeatureController.update()

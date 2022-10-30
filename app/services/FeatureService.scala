@@ -1,29 +1,38 @@
 package services
 
-
-import models.Models.FeatureData
-import repositories.FeatureRepository
-import v1.feature.FeatureRequest
+import models.Entities.{FeatureEntity, UserEntity}
+import models.exception.{FeatureNotFound, UserNotFound}
+import repositories.{FeatureRepository, UserFeatureEnabledRepository, UserRepository}
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
-class FeatureService @Inject()(val featureRepository: FeatureRepository) {
-  def isFeatureEnabled: Future[Boolean] = Future.successful(true)
+class FeatureService @Inject()(featureRepository: FeatureRepository,
+                               userRepository: UserRepository,
+                               userFeatureEnabledRepository: UserFeatureEnabledRepository) {
 
-  def getFeatures(email: String): Future[Seq[FeatureData]] = featureRepository.getByEmail(email)
+  private def withUserDataAndFeatureData[T](email: String, featureName: String)(f: (UserEntity, FeatureEntity) => Future[T]): Future[T] = {
+    val maybeUserAndMaybeFeature = for {
+      user <- userRepository.findByEmail(email)
+      feature <- featureRepository.get(featureName)
+    } yield (user, feature)
 
-  def getFeatureByName(email: String, featureName: String): Future[FeatureData] =
-    featureRepository.getByEmailAndName(email, featureName)
-      .map {
-        case Some(feature) =>feature
-        case None => throw new Exception //TODO: Handle this exception
-      }
+    maybeUserAndMaybeFeature flatMap {
+      case (Some(user), Some(feature)) => f(user, feature)
+      case (None, _) => Future.failed(UserNotFound(email))
+      case (_, None) => Future.failed(FeatureNotFound(featureName))
+    }
+  }
 
-  def createFeature(feature: FeatureData): Future[Int] = featureRepository.create(feature)
+  def isFeatureEnabled(email: String, featureName: String): Future[Boolean] =
+    withUserDataAndFeatureData(email, featureName) { (u, f) =>
+      userFeatureEnabledRepository.enabled(u.id.get, f.id.get)
+    }
 
-  def updateFeature(feature: FeatureRequest): Future[FeatureData] = ???
-
+  def update(email: String, featureName: String, enabled: Boolean): Future[Boolean] =
+    withUserDataAndFeatureData(email, featureName) { (user, feature) =>
+      userFeatureEnabledRepository.update(user.id.get, feature.id.get, enabled)
+    }
 }

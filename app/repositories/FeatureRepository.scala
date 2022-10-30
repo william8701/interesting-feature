@@ -1,29 +1,32 @@
 package repositories
 
-import models.Models.FeatureData
+import com.google.inject.ImplementedBy
+import models.Entities.FeatureEntity
 
+import javax.inject.Singleton
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
+@ImplementedBy(classOf[InMemoryFeatureRepository])
 trait FeatureRepository {
-  def create(data: FeatureData): Future[Int]
 
-  def list(): Future[Seq[FeatureData]]
+  def get(id: Int): Future[Option[FeatureEntity]]
 
-  def getByEmail(email: String): Future[Seq[FeatureData]]
+  def get(name: String): Future[Option[FeatureEntity]]
 
-  def get(id: Int): Future[Option[FeatureData]]
-
-  def getByEmailAndName(email: String, name: String): Future[Option[FeatureData]]
 }
 
-class FeatureRepositoryImpl extends FeatureRepository {
-  override def create(data: FeatureData): Future[Int] = ???
+@Singleton
+class InMemoryFeatureRepository extends FeatureRepository {
 
-  override def list(): Future[Seq[FeatureData]] = ???
+  val features = new ListBuffer[FeatureEntity]()
+  features.addOne(FeatureEntity(Some(1), "FEATURE_ONE"))
+  features.addOne(FeatureEntity(Some(2), "FEATURE_TWO"))
+  features.addOne(FeatureEntity(Some(3), "FEATURE_THREE"))
 
-  override def get(id: Int): Future[Option[FeatureData]] = ???
+  override def get(id: Int): Future[Option[FeatureEntity]] = Future(features.find(d => d.id.get.equals(id)))
 
-  override def getByEmail(email: String): Future[Seq[FeatureData]] = ???
+  override def get(name: String): Future[Option[FeatureEntity]] = Future(features.find(d => d.featureName.equals(name)))
 
-  override def getByEmailAndName(email: String, name: String): Future[Option[FeatureData]] = ???
 }
